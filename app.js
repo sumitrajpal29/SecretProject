@@ -54,7 +54,9 @@ app.post("/login",function(req,res){
   User.findOne({email:username},function(err,found){
     if(!err){
       if(found){
+        if(password===found.password)
         res.render("secrets");
+        else res.send("Wrong password");
       }
       else console.log("Username not found!");
     }
