@@ -11,6 +11,7 @@ const passportLocalMongoose = require("passport-local-mongoose");
 const session = require("express-session");
 
 const googleStrategy = require("passport-google-oauth20").Strategy;
+const FacebookStrategy = require("passport-facebook")
 
 const app = express();
 
@@ -31,7 +32,8 @@ mongoose.connect("mongodb://localhost:27017/userDB",{useNewUrlParser:true,useUni
 const userSchema = new mongoose.Schema({
   email:String,
   password:String,
-  googleId : String
+  googleId : String,
+  facebookId : String
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -61,9 +63,20 @@ passport.use(new googleStrategy({
   // useProfileURL : "http://www.googleapis.com/oauth2/v3/userinfo"
   },
   function(accessTocken,refressTocken,profile,cb){
-    console.log(profile);
     User.findOrCreate({googleId : profile.id},function(err,user){
       return cb(err,user);
+    });
+  }
+));
+
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
     });
   }
 ));
@@ -95,6 +108,8 @@ app.get("/logout",function(req,res){
   res.redirect("/")
 });
 
+
+//_________________Google Auth_______________//
 app.get("/auth/google",
   passport.authenticate("google",{scope:["profile"]}));
 
@@ -105,6 +120,16 @@ passport.authenticate("google",{failureRedirect:"/login"}),
   });
 
 
+  //_________________Facebook Auth_______________//
+app.get('/auth/facebook',
+    passport.authenticate('facebook'));
+
+app.get('/auth/facebook/secrets',
+    passport.authenticate('facebook', { failureRedirect: '/login' }),
+    function(req, res) {
+      // Successful authentication, redirect home.
+      res.redirect('/secrets');
+    });
 
 
 app.post("/register",function(req,res){
@@ -116,14 +141,12 @@ app.post("/register",function(req,res){
     else {
       passport.authenticate("local")(req,res,function(){
       res.redirect("/secrets");
-      console.log(user);
     }) }
   })
 });
 
 app.post("/login",function(req,res){
   const user = new User ({username:req.body.username,password:req.body.password});
-  console.log(user);
     req.login(user,function(err){
       if(err){
         console.log(err);
@@ -132,7 +155,6 @@ app.post("/login",function(req,res){
       else {
         passport.authenticate("local")(req,res,function(){
           res.redirect("/secrets");
-          console.log(user.username)
         })
       }
     })});
