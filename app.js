@@ -33,7 +33,8 @@ const userSchema = new mongoose.Schema({
   email:String,
   password:String,
   googleId : String,
-  facebookId : String
+  facebookId : String,
+  secret : []
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -53,14 +54,12 @@ passport.deserializeUser(function(id, done) {
   });
 });
 
-// passport.serializeUser(User.serializeUser());
-// passport.deserializeUser(User.deserializeUser());
 
 passport.use(new googleStrategy({
   clientID : process.env.CLIENT_ID,
   clientSecret : process.env.CLIENT_SECRET,
   callbackURL : "http://localhost:3000/auth/google/secrets",
-  // useProfileURL : "http://www.googleapis.com/oauth2/v3/userinfo"
+  useProfileURL : "http://www.googleapis.com/oauth2/v3/userinfo"
   },
   function(accessTocken,refressTocken,profile,cb){
     User.findOrCreate({googleId : profile.id},function(err,user){
@@ -99,8 +98,11 @@ app.get("/register",function(req,res){
 });
 
 app.get("/secrets",function(req,res){
-  if(req.isAuthenticated()) res.render("secrets");
-  else res.redirect("login");
+  User.find({secret:{$ne:null}},function(err,found){
+    if(err)console.log(err);
+    else
+    res.render("secrets",{foundSecrets:found});
+  })
 });
 
 app.get("/logout",function(req,res){
@@ -131,6 +133,11 @@ app.get('/auth/facebook/secrets',
       res.redirect('/secrets');
     });
 
+app.get("/submit",function(req,res){
+  if(req.isAuthenticated()) res.render("submit");
+  else res.redirect("login");
+});
+
 
 app.post("/register",function(req,res){
   User.register({username:req.body.username},req.body.password,function(err,user){
@@ -158,6 +165,20 @@ app.post("/login",function(req,res){
         })
       }
     })});
+
+app.post("/submit",function(req,res){
+    User.findById(req.user.id,function(err,found){
+      if(!err){
+        if(found){
+          found.secret.push(req.body.secret);
+          found.save();
+          res.redirect("/secrets")
+        }
+        else res.redirect("/login");
+      }
+      else console.log(err);
+    })
+});
 
 
     //deprication fix for mongoose
