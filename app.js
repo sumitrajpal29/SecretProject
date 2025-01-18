@@ -15,7 +15,7 @@ const FacebookStrategy = require("passport-facebook");
 
 const app = express();
 const MONGODB_URI = process.env.MONGODB_URI;
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = process.env.BASE_URL || `http://${req.headers.host}`;
 
 app.use(express.static("public"));
 app.set("view engine", "ejs");
